@@ -52,7 +52,6 @@ export const getPositionDetailsAtBlock = async (
         headers: { "Content-Type": "application/json" },
     });
     let data = await response.json();
-    console.log(data);
     let position = data.data.position;
     let tickLow = Number(position.tickLower.tickIdx);
     let tickHigh = Number(position.tickUpper.tickIdx);

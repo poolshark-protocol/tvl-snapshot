@@ -9,13 +9,6 @@ function getToken0Amount(
   sqrtRatioX96: bigint,
   liquidity: bigint
 ): bigint {
-
-    console.log("tickCurrent : " + tickCurrent);
-    console.log("tickLower : " + tickLower);
-    console.log("tickUpper : " + tickUpper);
-    console.log("sqrtRatioX96 : " + sqrtRatioX96);
-    console.log("liquidity : " + liquidity);
-
   if (tickCurrent < tickLower) {
     return SqrtPriceMath.getAmount0Delta(
       TickMath.getSqrtRatioAtTick(tickLower),
