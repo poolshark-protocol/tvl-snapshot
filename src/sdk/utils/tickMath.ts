@@ -42,11 +42,6 @@ export abstract class TickMath {
    */
   public static getSqrtRatioAtTick(tick: number): bigint {
 
-    console.log('tick', tick)
-    console.log('TickMath.MIN_TICK', TickMath.MIN_TICK)
-    console.log('TickMath.MAX_TICK', TickMath.MAX_TICK)
-    console.log('Number.isInteger(tick)', Number.isInteger(tick))
-
     invariant(tick >= TickMath.MIN_TICK && tick <= TickMath.MAX_TICK && Number.isInteger(tick), 'TICK')
     const absTick: number = tick < 0 ? tick * -1 : tick
 
