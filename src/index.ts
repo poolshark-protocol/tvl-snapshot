@@ -30,9 +30,9 @@ const snapshotBlocks = [
   3092881,
   3232712,
   3276348,
-  3283142,
   3276446,
-  3776408
+  3776408,
+  3283142,
 ];
 
 for(let block of snapshotBlocks) {
@@ -59,10 +59,13 @@ for(let block of snapshotBlocks) {
     lpValueByUsers.forEach((value, key) => {
       console.log(`User: ${key}`);
       let lpValue: Map<string, BigNumber> = value;
+      let total = new BigNumber(0);
       lpValue.forEach((value, key) => {
         console.log(`Pool: ${key} LP Value: ${value.toString()}`);
+        total = total.plus(value);
       }
       );
+      console.log("User's total LP", total.toString());
       console.log("---------------------------------------------------");
     });
 }
