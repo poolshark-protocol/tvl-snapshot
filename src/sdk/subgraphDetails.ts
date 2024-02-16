@@ -2,6 +2,9 @@ import BigNumber from "bignumber.js";
 import { AMM_TYPES, CHAINS, PROTOCOLS, SUBGRAPH_URLS } from "./config";
 import { PositionMath } from "./utils/positionMath";
 
+
+
+
 export interface Position{
     id: string;
     liquidity: bigint;
@@ -58,91 +61,98 @@ export const getPositionsForAddressByPoolAtBlock = async (
     let ownerQuery = address !== "" ? `owner: "${address.toLowerCase()}"` : ``;
 
     let whereQuery = ownerQuery !== "" && poolQuery !== "" ? `where: {${ownerQuery} , ${poolQuery}}` : ownerQuery !== "" ?`where: {${ownerQuery}}`: poolQuery !== "" ? `where: {${poolQuery}}`: ``;
-    let finalCondition = whereQuery!=="" ||  blockQuery!=="" ? `(${whereQuery} ${blockQuery})` : ``;
-    let query = `{
-        positions${finalCondition} {
-           id
-
-            liquidity
-            owner
-            pool {
-                sqrtPrice
-                tick
-                id
-            }
-            tickLower{
-                tickIdx
-            }
-            tickUpper{
-                tickIdx
-            }
-            token0 {
-                id
-                decimals
-                derivedUSD
-                name
-                symbol
-            }
-            token1 {
-                id
-                decimals
-                derivedUSD
-                name
-                symbol
-            }
-        },
-        _meta{
-                block{
-                number
-            }
-        }
-    }`;
-
-    console.log(query)
-
-    let response = await fetch(subgraphUrl, {
-        method: "POST",
-        body: JSON.stringify({ query }),
-        headers: { "Content-Type": "application/json" },
-    });
-    let data = await response.json();
-    let positions = data.data.positions;
+    let skip = 0;
+    let fetchNext = true;
     let result: Position[] = [];
-    for (let i = 0; i < positions.length; i++) {
-        let position = positions[i];
-        let transformedPosition: Position = {
-            id: position.id,
-            liquidity: BigInt(position.liquidity),
-            owner: position.owner,
-            pool: {
-                sqrtPrice: BigInt(position.pool.sqrtPrice),
-                tick: Number(position.pool.tick),
-                id: position.pool.id,
-            },
-            tickLower: {
-                tickIdx: Number(position.tickLower.tickIdx),
-            },
-            tickUpper: {
-                tickIdx: Number(position.tickUpper.tickIdx),
-            },
-            token0: {
-                id: position.token0.id,
-                decimals: position.token0.decimals,
-                derivedUSD: position.token0.derivedUSD,
-                name: position.token0.name,
-                symbol: position.token0.symbol,
-            },
-            token1: {
-                id: position.token1.id,
-                decimals: position.token1.decimals,
-                derivedUSD: position.token1.derivedUSD,
-                name: position.token1.name,
-                symbol: position.token1.symbol,
-            },
-        };
+    while(fetchNext){
+        let query = `{
+            positions(${whereQuery} ${blockQuery} orderBy: transaction__timestamp, first:1000,skip:${skip}) {
+            id
 
-        result.push(transformedPosition);
-    
+                liquidity
+                owner
+                pool {
+                    sqrtPrice
+                    tick
+                    id
+                }
+                tickLower{
+                    tickIdx
+                }
+                tickUpper{
+                    tickIdx
+                }
+                token0 {
+                    id
+                    decimals
+                    derivedUSD
+                    name
+                    symbol
+                }
+                token1 {
+                    id
+                    decimals
+                    derivedUSD
+                    name
+                    symbol
+                }
+            },
+            _meta{
+                    block{
+                    number
+                }
+            }
+        }`;
+
+        console.log(query)
+
+        let response = await fetch(subgraphUrl, {
+            method: "POST",
+            body: JSON.stringify({ query }),
+            headers: { "Content-Type": "application/json" },
+        });
+        let data = await response.json();
+        let positions = data.data.positions;
+        for (let i = 0; i < positions.length; i++) {
+            let position = positions[i];
+            let transformedPosition: Position = {
+                id: position.id,
+                liquidity: BigInt(position.liquidity),
+                owner: position.owner,
+                pool: {
+                    sqrtPrice: BigInt(position.pool.sqrtPrice),
+                    tick: Number(position.pool.tick),
+                    id: position.pool.id,
+                },
+                tickLower: {
+                    tickIdx: Number(position.tickLower.tickIdx),
+                },
+                tickUpper: {
+                    tickIdx: Number(position.tickUpper.tickIdx),
+                },
+                token0: {
+                    id: position.token0.id,
+                    decimals: position.token0.decimals,
+                    derivedUSD: position.token0.derivedUSD,
+                    name: position.token0.name,
+                    symbol: position.token0.symbol,
+                },
+                token1: {
+                    id: position.token1.id,
+                    decimals: position.token1.decimals,
+                    derivedUSD: position.token1.derivedUSD,
+                    name: position.token1.name,
+                    symbol: position.token1.symbol,
+                },
+            };
+            result.push(transformedPosition);
+            
+        }
+        if(positions.length < 1000){
+            fetchNext = false;
+        }else{
+            skip += 1000;
+        }
     }
     return result;
 }
@@ -279,4 +289,28 @@ export const getPositionDetailsFromPosition =  (
 
     return {...position, token0USDValue: token0UsdValue, token1USDValue: token1UsdValue, token0AmountsInWei, token1AmountsInWei, token0DecimalValue, token1DecimalValue};
 
+}
+
+export const getLPValueByUserAndPoolFromPositions = (
+    positions: Position[]
+): Map<string, Map<string, BigNumber>> => {
+    let result = new Map<string, Map<string, BigNumber>>();
+    for (let i = 0; i < positions.length; i++) {
+        let position = positions[i];
+        let poolId = position.pool.id;
+        let owner = position.owner;
+        let userPositions = result.get(owner);
+        if (userPositions === undefined) {
+            userPositions = new Map<string, BigNumber>();
+            result.set(owner, userPositions);
+        }
+        let poolPositions = userPositions.get(poolId);
+        if (poolPositions === undefined) {
+            poolPositions = BigNumber(0);
+        }
+        let positionWithUSDValue = getPositionDetailsFromPosition(position);
+        poolPositions = poolPositions.plus(BigNumber(positionWithUSDValue.token0USDValue).plus(positionWithUSDValue.token1USDValue));
+        userPositions.set(poolId, poolPositions);
+    }
+    return result;
 }

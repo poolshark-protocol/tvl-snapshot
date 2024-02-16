@@ -1,5 +1,6 @@
+import BigNumber from "bignumber.js";
 import { CHAINS, PROTOCOLS, AMM_TYPES } from "./sdk/config";
-import { getPositionAtBlock, getPositionDetailsFromPosition, getPositionsForAddressByPoolAtBlock } from "./sdk/subgraphDetails";
+import { getLPValueByUserAndPoolFromPositions, getPositionAtBlock, getPositionDetailsFromPosition, getPositionsForAddressByPoolAtBlock } from "./sdk/subgraphDetails";
 (BigInt.prototype as any).toJSON = function () {
   return this.toString();
 };
@@ -20,13 +21,13 @@ import { getPositionAtBlock, getPositionDetailsFromPosition, getPositionsForAddr
 //     `)
 // });
 
-
+10000000
 
 
 const positions = getPositionsForAddressByPoolAtBlock(
         0, // block number 0 for latest block
-        "0xeD5C73F229D1f085c441CAc3D9d8dee9C44dd475",  //pass empty string to remove filter based on user address
-        "0xf2e9c024f1c0b7a2a4ea11243c2d86a7b38dd72f",  //pass empty string to remove filter based on pool address
+        "",  //pass empty string to remove filter based on user address
+        "",  //pass empty string to remove filter based on pool address
         CHAINS.MODE, // chain id
         PROTOCOLS.SUPSWAP, // protocol
         AMM_TYPES.UNISWAPV3 // amm type
@@ -37,12 +38,22 @@ positions.then((positions) => {
 
     console.log("Positions: ", positions.length)
 
-    positions.forEach((position) => {
-
-    const result = getPositionDetailsFromPosition(position);
-    console.log(`${JSON.stringify(result,null, 4)}`)
-    
+    let positionsWithUSDValue = positions.map((position) => {
+        return getPositionDetailsFromPosition(position);
     });
+  
+    let lpValueByUsers = getLPValueByUserAndPoolFromPositions(positionsWithUSDValue);
+    
+    lpValueByUsers.forEach((value, key) => {
+        console.log(`User: ${key}`);
+        let lpValue:Map<string,BigNumber> = value;
+        lpValue.forEach((value, key) => {
+            console.log(`Pool: ${key} LP Value: ${value.toString()}`);
+        }
+        );
+        console.log("---------------------------------------------------"); 
+    });
+
 });
 
 
