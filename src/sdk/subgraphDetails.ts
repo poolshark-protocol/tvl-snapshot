@@ -104,7 +104,7 @@ export const getPositionsForAddressByPoolAtBlock = async (
             }
         }`;
 
-        console.log(query)
+       // console.log(query)
 
         let response = await fetch(subgraphUrl, {
             method: "POST",
