@@ -68,7 +68,10 @@ for(let block of snapshotBlocks) {
     let sortedLpValueByUsers = new Map([...onlyUsersWithLPValue.entries()].sort((a, b) => {
       return b[1].comparedTo(a[1]);
     }));
-
+    let protocolTotal = new BigNumber(0);
+    sortedLpValueByUsers.forEach((value, key) => {
+      protocolTotal = protocolTotal.plus(value);
+    });
     sortedLpValueByUsers.forEach((value, key) => {
       console.log(`User: ${key}`);
       let lpValue: Map<string, BigNumber> = lpValueByUsers.get(key)||new Map();
@@ -81,6 +84,8 @@ for(let block of snapshotBlocks) {
       console.log("User's total LP", total.toString());
       console.log("---------------------------------------------------");
     });
+
+    console.log("Protocol's total LP", protocolTotal.toString());
 }
 }
 
