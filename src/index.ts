@@ -27,12 +27,7 @@ const getData = async () => {
 
 
 const snapshotBlocks = [
-  3092881,
-  3232712,
-  3276348,
-  3276446,
-  3776408,
-  3283142,
+  0
 ];
 
 for(let block of snapshotBlocks) {
@@ -56,9 +51,27 @@ for(let block of snapshotBlocks) {
 
     let lpValueByUsers = getLPValueByUserAndPoolFromPositions(positionsWithUSDValue);
 
+    let onlyUsersWithLPValue = new Map<string, BigNumber>();
+
     lpValueByUsers.forEach((value, key) => {
-      console.log(`User: ${key}`);
       let lpValue: Map<string, BigNumber> = value;
+      let total = new BigNumber(0);
+      lpValue.forEach((value, key) => {
+        total = total.plus(value);
+      }
+      );
+      onlyUsersWithLPValue.set(key, total);
+    });
+
+
+    //sort onlyUsersWithLPValue by value
+    let sortedLpValueByUsers = new Map([...onlyUsersWithLPValue.entries()].sort((a, b) => {
+      return b[1].comparedTo(a[1]);
+    }));
+
+    sortedLpValueByUsers.forEach((value, key) => {
+      console.log(`User: ${key}`);
+      let lpValue: Map<string, BigNumber> = lpValueByUsers.get(key)||new Map();
       let total = new BigNumber(0);
       lpValue.forEach((value, key) => {
         console.log(`Pool: ${key} LP Value: ${value.toString()}`);
