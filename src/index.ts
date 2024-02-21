@@ -5,6 +5,13 @@ import { getLPValueByUserAndPoolFromPositions, getPositionAtBlock, getPositionDe
   return this.toString();
 };
 
+import { promisify } from 'util';
+import stream from 'stream';
+import csv from 'csv-parser';
+import fs from 'fs';
+import { format } from 'fast-csv';
+import { write } from 'fast-csv';
+
 //Uncomment the following lines to test the getPositionAtBlock function
 
 // const position = getPositionAtBlock(
@@ -21,78 +28,99 @@ import { getLPValueByUserAndPoolFromPositions, getPositionAtBlock, getPositionDe
 //     `)
 // });
 
+interface LPValueDetails {
+  pool: string;
+  lpValue: string;
+}
+
+interface UserLPData {
+  totalLP: string;
+  pools: LPValueDetails[];
+}
+
+// Define an object type that can be indexed with string keys, where each key points to a UserLPData object
+interface OutputData {
+  [key: string]: UserLPData;
+}
+
+interface CSVRow {
+  user: string;
+  pool: string;
+  block: number;
+  position: number;
+  lpvalue: string;
+}
+
+
+const pipeline = promisify(stream.pipeline);
+
+// Assuming you have the following functions and constants already defined
+// getPositionsForAddressByPoolAtBlock, CHAINS, PROTOCOLS, AMM_TYPES, getPositionDetailsFromPosition, getLPValueByUserAndPoolFromPositions, BigNumber
+
+const readBlocksFromCSV = async (filePath: string): Promise<number[]> => {
+  const blocks: number[] = [];
+  await pipeline(
+    fs.createReadStream(filePath),
+    csv(),
+    async function* (source) {
+      for await (const chunk of source) {
+        // Assuming each row in the CSV has a column 'block' with the block number
+        if (chunk.block) blocks.push(parseInt(chunk.block, 10));
+      }
+    }
+  );
+  return blocks;
+};
 
 
 const getData = async () => {
-
-
-const snapshotBlocks = [
-  0
-];
-
-for(let block of snapshotBlocks) {
+  const snapshotBlocks = [
+    3116208, 3159408, 3202608, 3245808, 3289008, 3332208,
+    3375408, 3418608, 3461808, 3505008, 3548208, 3591408,
+    3634608, 3677808, 3721008, 3764208, 3807408, 3850608,
+    3893808, 3937008, 3980208, 3983003,
+  ]; //await readBlocksFromCSV('src/sdk/mode_chain_daily_blocks.csv');
   
-  const positions = await getPositionsForAddressByPoolAtBlock(
-    block, // block number 0 for latest block
-    "",  //pass empty string to remove filter based on user address
-    "",  //pass empty string to remove filter based on pool address
-    CHAINS.MODE, // chain id
-    PROTOCOLS.SUPSWAP, // protocol
-    AMM_TYPES.UNISWAPV3 // amm type
-  );
- console.log(`Block: ${block}`);
-    // print response
+  const csvRows: CSVRow[] = [];
 
-    console.log("Positions: ", positions.length)
+  for (let block of snapshotBlocks) {
+    const positions = await getPositionsForAddressByPoolAtBlock(
+      block, "", "", CHAINS.MODE, PROTOCOLS.SUPSWAP, AMM_TYPES.UNISWAPV3
+    );
 
-    let positionsWithUSDValue = positions.map((position) => {
-      return getPositionDetailsFromPosition(position);
-    });
+    console.log(`Block: ${block}`);
+    console.log("Positions: ", positions.length);
 
+    // Assuming this part of the logic remains the same
+    let positionsWithUSDValue = positions.map(getPositionDetailsFromPosition);
     let lpValueByUsers = getLPValueByUserAndPoolFromPositions(positionsWithUSDValue);
 
-    let onlyUsersWithLPValue = new Map<string, BigNumber>();
-
     lpValueByUsers.forEach((value, key) => {
-      let lpValue: Map<string, BigNumber> = value;
-      let total = new BigNumber(0);
-      lpValue.forEach((value, key) => {
-        total = total.plus(value);
-      }
-      );
-      onlyUsersWithLPValue.set(key, total);
+      let positionIndex = 0; // Define how you track position index
+      value.forEach((lpValue, poolKey) => {
+        const lpValueStr = lpValue.toString();
+        // Accumulate CSV row data
+        csvRows.push({
+          user: key,
+          pool: poolKey,
+          block,
+          position: positions.length, // Adjust if you have a specific way to identify positions
+          lpvalue: lpValueStr,
+        });
+      });
     });
+  }
 
-
-    //sort onlyUsersWithLPValue by value
-    let sortedLpValueByUsers = new Map([...onlyUsersWithLPValue.entries()].sort((a, b) => {
-      return b[1].comparedTo(a[1]);
-    }));
-    let protocolTotal = new BigNumber(0);
-    sortedLpValueByUsers.forEach((value, key) => {
-      protocolTotal = protocolTotal.plus(value);
-    });
-    sortedLpValueByUsers.forEach((value, key) => {
-      console.log(`User: ${key}`);
-      let lpValue: Map<string, BigNumber> = lpValueByUsers.get(key)||new Map();
-      let total = new BigNumber(0);
-      lpValue.forEach((value, key) => {
-        console.log(`Pool: ${key} LP Value: ${value.toString()}`);
-        total = total.plus(value);
-      }
-      );
-      console.log("User's total LP", total.toString());
-      console.log("---------------------------------------------------");
-    });
-
-    console.log("Protocol's total LP", protocolTotal.toString());
-}
-}
+  // Write the CSV output to a file
+  const ws = fs.createWriteStream('outputData.csv');
+  write(csvRows, { headers: true }).pipe(ws).on('finish', () => {
+    console.log("CSV file has been written.");
+  });
+};
 
 getData().then(() => {
   console.log("Done");
 });
-
 // getPrice(new BigNumber('1579427897588720602142863095414958'), 6, 18); //Uniswap
 // getPrice(new BigNumber('3968729022398277600000000'), 18, 6); //SupSwap
 
