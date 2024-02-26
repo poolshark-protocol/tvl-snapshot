@@ -148,6 +148,95 @@ export const getPositionsForAddressByPoolAtBlock = async (
             skip += 1000;
         }
     }
+    skip = 0;
+    fetchNext = true;
+    while(fetchNext){
+        let query = `{
+            limitPositions(${whereQuery} ${blockQuery} orderBy: createdAtTimestamp, first:1000,skip:${skip}) {
+                id
+                liquidity
+                owner
+                pool {
+                    poolPrice
+                    tickAtPrice
+                    id
+                    token0 {
+                        id
+                        decimals
+                        usdPrice
+                        name
+                        symbol
+                    }
+                    token1 {
+                        id
+                        decimals
+                        usdPrice
+                        name
+                        symbol
+                    }
+                }
+                lower
+                upper
+            },
+            _meta{
+                block{
+                    number
+                }
+            }
+        }`;
+
+       // console.log(query)
+
+        let response = await fetch(subgraphUrl, {
+            method: "POST",
+            body: JSON.stringify({ query }),
+            headers: { "Content-Type": "application/json" },
+        });
+        let data = await response.json();
+        if (!data.data.limitPositions) {
+            console.log("position check:", data.data.limitPositions)
+        }
+        let positions = data.data.limitPositions;
+        for (let i = 0; i < positions.length; i++) {
+            let position = positions[i];
+            let transformedPosition: Position = {
+                id: position.id,
+                liquidity: BigInt(position.liquidity),
+                owner: position.owner,
+                pool: {
+                    sqrtPrice: BigInt(position.pool.poolPrice),
+                    tick: Number(position.pool.tickAtPrice),
+                    id: position.pool.id,
+                },
+                tickLower: {
+                    tickIdx: Number(position.lower),
+                },
+                tickUpper: {
+                    tickIdx: Number(position.upper),
+                },
+                token0: {
+                    id: position.pool.token0.id,
+                    decimals: position.pool.token0.decimals,
+                    derivedUSD: position.pool.token0.usdPrice,
+                    name: position.pool.token0.name,
+                    symbol: position.pool.token0.symbol,
+                },
+                token1: {
+                    id: position.pool.token1.id,
+                    decimals: position.pool.token1.decimals,
+                    derivedUSD: position.pool.token1.usdPrice,
+                    name: position.pool.token1.name,
+                    symbol: position.pool.token1.symbol,
+                },
+            };
+            result.push(transformedPosition);
+        }
+        if(positions.length < 1000){
+            fetchNext = false;
+        }else{
+            skip += 1000;
+        }
+    }
     return result;
 }
 
