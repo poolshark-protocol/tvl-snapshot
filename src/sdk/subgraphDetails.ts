@@ -66,39 +66,34 @@ export const getPositionsForAddressByPoolAtBlock = async (
     let result: Position[] = [];
     while(fetchNext){
         let query = `{
-            positions(${whereQuery} ${blockQuery} orderBy: transaction__timestamp, first:1000,skip:${skip}) {
-            id
-
+            rangePositions(${whereQuery} ${blockQuery} orderBy: createdAtTimestamp, first:1000,skip:${skip}) {
+                id
                 liquidity
                 owner
                 pool {
-                    sqrtPrice
-                    tick
+                    poolPrice
+                    tickAtPrice
                     id
+                    token0 {
+                        id
+                        decimals
+                        usdPrice
+                        name
+                        symbol
+                    }
+                    token1 {
+                        id
+                        decimals
+                        usdPrice
+                        name
+                        symbol
+                    }
                 }
-                tickLower{
-                    tickIdx
-                }
-                tickUpper{
-                    tickIdx
-                }
-                token0 {
-                    id
-                    decimals
-                    derivedUSD
-                    name
-                    symbol
-                }
-                token1 {
-                    id
-                    decimals
-                    derivedUSD
-                    name
-                    symbol
-                }
+                lower
+                upper
             },
             _meta{
-                    block{
+                block{
                     number
                 }
             }
@@ -112,7 +107,7 @@ export const getPositionsForAddressByPoolAtBlock = async (
             headers: { "Content-Type": "application/json" },
         });
         let data = await response.json();
-        let positions = data.data.positions;
+        let positions = data.data.rangePositions;
         for (let i = 0; i < positions.length; i++) {
             let position = positions[i];
             let transformedPosition: Position = {
@@ -120,33 +115,32 @@ export const getPositionsForAddressByPoolAtBlock = async (
                 liquidity: BigInt(position.liquidity),
                 owner: position.owner,
                 pool: {
-                    sqrtPrice: BigInt(position.pool.sqrtPrice),
-                    tick: Number(position.pool.tick),
+                    sqrtPrice: BigInt(position.pool.poolPrice),
+                    tick: Number(position.pool.tickAtPrice),
                     id: position.pool.id,
                 },
                 tickLower: {
-                    tickIdx: Number(position.tickLower.tickIdx),
+                    tickIdx: Number(position.lower),
                 },
                 tickUpper: {
-                    tickIdx: Number(position.tickUpper.tickIdx),
+                    tickIdx: Number(position.upper),
                 },
                 token0: {
-                    id: position.token0.id,
-                    decimals: position.token0.decimals,
-                    derivedUSD: position.token0.derivedUSD,
-                    name: position.token0.name,
-                    symbol: position.token0.symbol,
+                    id: position.pool.token0.id,
+                    decimals: position.pool.token0.decimals,
+                    derivedUSD: position.pool.token0.usdPrice,
+                    name: position.pool.token0.name,
+                    symbol: position.pool.token0.symbol,
                 },
                 token1: {
-                    id: position.token1.id,
-                    decimals: position.token1.decimals,
-                    derivedUSD: position.token1.derivedUSD,
-                    name: position.token1.name,
-                    symbol: position.token1.symbol,
+                    id: position.pool.token1.id,
+                    decimals: position.pool.token1.decimals,
+                    derivedUSD: position.pool.token1.usdPrice,
+                    name: position.pool.token1.name,
+                    symbol: position.pool.token1.symbol,
                 },
             };
             result.push(transformedPosition);
-            
         }
         if(positions.length < 1000){
             fetchNext = false;
@@ -168,33 +162,29 @@ export const getPositionAtBlock = async (
     let subgraphUrl = SUBGRAPH_URLS[chainId][protocol][ammType];
     let blockQuery = blockNumber !== 0 ? `, block: {number: ${blockNumber}}` : ``;
     let query = `{
-        position(id: "${positionId}" ${blockQuery}) {
+        rangePosition(id: "${positionId}" ${blockQuery}) {
             id
             pool {
-                sqrtPrice
-                tick
+                poolPrice
+                tickAtPrice
+                token0 {
+                    id
+                    decimals
+                    usdPrice
+                    name
+                    symbol
+                }
+                token1 {
+                    id
+                    decimals
+                    usdPrice
+                    name
+                    symbol
+                }
             }
-            tickLower{
-                tickIdx
-            }
-            tickUpper{
-                tickIdx
-            }
+            lower
+            upper
             liquidity
-            token0 {
-                id
-                decimals
-                derivedUSD
-                name
-                symbol
-            }
-            token1 {
-                id
-                decimals
-                derivedUSD
-                name
-                symbol
-            }
         },
         _meta{
                 block{
@@ -208,37 +198,36 @@ export const getPositionAtBlock = async (
         headers: { "Content-Type": "application/json" },
     });
     let data = await response.json();
-    let position = data.data.position;
-
+    let position = data.data.rangePosition;
 
     return  {
             id: position.id,
             liquidity: BigInt(position.liquidity),
             owner: position.owner,
             pool: {
-                sqrtPrice: BigInt(position.pool.sqrtPrice),
-                tick: Number(position.pool.tick),
+                sqrtPrice: BigInt(position.pool.poolPrice),
+                tick: Number(position.pool.tickAtPrice),
                 id: position.pool.id,
             },
             tickLower: {
-                tickIdx: Number(position.tickLower.tickIdx),
+                tickIdx: Number(position.lower),
             },
             tickUpper: {
-                tickIdx: Number(position.tickUpper.tickIdx),
+                tickIdx: Number(position.upper),
             },
             token0: {
-                id: position.token0.id,
-                decimals: position.token0.decimals,
-                derivedUSD: position.token0.derivedUSD,
-                name: position.token0.name,
-                symbol: position.token0.symbol,
+                id: position.pool.token0.id,
+                decimals: position.pool.token0.decimals,
+                derivedUSD: position.pool.token0.derivedUSD,
+                name: position.pool.token0.name,
+                symbol: position.pool.token0.symbol,
             },
             token1: {
-                id: position.token1.id,
-                decimals: position.token1.decimals,
-                derivedUSD: position.token1.derivedUSD,
-                name: position.token1.name,
-                symbol: position.token1.symbol,
+                id: position.pool.token1.id,
+                decimals: position.pool.token1.decimals,
+                derivedUSD: position.pool.token1.derivedUSD,
+                name: position.pool.token1.name,
+                symbol: position.pool.token1.symbol,
             },
         };
 

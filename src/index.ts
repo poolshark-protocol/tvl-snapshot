@@ -85,7 +85,7 @@ const getData = async () => {
 
   for (let block of snapshotBlocks) {
     const positions = await getPositionsForAddressByPoolAtBlock(
-      block, "", "", CHAINS.MODE, PROTOCOLS.SUPSWAP, AMM_TYPES.UNISWAPV3
+      block, "", "", CHAINS.MODE, PROTOCOLS.POOLSHARK, AMM_TYPES.POOLSHARK
     );
 
     console.log(`Block: ${block}`);
