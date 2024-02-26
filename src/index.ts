@@ -18,8 +18,8 @@ import { write } from 'fast-csv';
 //         0, // block number 0 for latest block
 //         2, // position id
 //         CHAINS.MODE, // chain id
-//         PROTOCOLS.SUPSWAP, // protocol
-//         AMM_TYPES.UNISWAPV3 // amm type
+//         PROTOCOLS.POOLSHARK, // protocol
+//         AMM_TYPES.POOLSHARK // amm type
 //     );
 // position.then((position) => {
 //     // print response
