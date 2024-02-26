@@ -218,14 +218,14 @@ export const getPositionAtBlock = async (
             token0: {
                 id: position.pool.token0.id,
                 decimals: position.pool.token0.decimals,
-                derivedUSD: position.pool.token0.derivedUSD,
+                derivedUSD: position.pool.token0.usdPrice,
                 name: position.pool.token0.name,
                 symbol: position.pool.token0.symbol,
             },
             token1: {
                 id: position.pool.token1.id,
                 decimals: position.pool.token1.decimals,
-                derivedUSD: position.pool.token1.derivedUSD,
+                derivedUSD: position.pool.token1.usdPrice,
                 name: position.pool.token1.name,
                 symbol: position.pool.token1.symbol,
             },
